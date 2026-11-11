@@ -27,12 +27,25 @@ function createDocumentService(repository) {
     },
 
     async listDocuments(owner) {
-      return repository.listByOwner(owner);
+      try {
+        return await repository.listByOwner(owner);
+      } catch (error) {
+        throw new AppError(500, 'LIST_FAILED', 'Não foi possível listar os documentos.', { cause: error });
+      }
     },
 
     async getDocumentForDownload(id, owner) {
-      const document = await repository.findByIdAndOwner(id, owner);
-      if (!document || !(await repository.fileExists(document.fileName))) {
+      let document;
+      try {
+        document = await repository.findByIdAndOwner(id, owner);
+        if (document && !(await repository.fileExists(document.fileName))) {
+          document = null;
+        }
+      } catch (error) {
+        throw new AppError(500, 'DOWNLOAD_FAILED', 'Não foi possível baixar o documento.', { cause: error });
+      }
+
+      if (!document) {
         throw new AppError(404, 'DOCUMENT_NOT_FOUND', 'Documento não encontrado.');
       }
 

@@ -39,7 +39,7 @@ function createDocumentController(service) {
           return next(new AppError(404, 'DOCUMENT_NOT_FOUND', 'Documento não encontrado.'));
         }
 
-        return next(error);
+        return next(new AppError(500, 'DOWNLOAD_FAILED', 'Não foi possível baixar o documento.', { cause: error }));
       });
     },
   };
