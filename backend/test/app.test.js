@@ -15,7 +15,7 @@ async function withServer(run, options = {}) {
   try {
     await new Promise((resolve) => server.once('listening', resolve));
     const { port } = server.address();
-    await run(`http://127.0.0.1:${port}`);
+    await run(`http://127.0.0.1:${port}`, storageDir);
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
@@ -167,4 +167,113 @@ test('rotas documentais validam usuário e arquivo e aplicam limite de upload', 
     assert.equal(response.status, 413);
     assert.equal((await response.json()).error.code, 'FILE_TOO_LARGE');
   }, { maxFileSizeBytes: 4 });
+});
+
+test('upload válido grava bytes locais e permite download binário', async () => {
+  const contents = new Uint8Array([0, 127, 128, 255]);
+  await withServer(async (baseUrl, storageDir) => {
+    const response = await fetch(`${baseUrl}/upload`, {
+      method: 'POST',
+      headers: { 'X-User-Id': 'usuario-a' },
+      body: uploadForm('binario.dat', contents),
+    });
+    assert.equal(response.status, 201);
+    const document = await response.json();
+    assert.equal(document.size, contents.byteLength);
+    assert.equal(document.originalName, 'binario.dat');
+    assert.deepEqual(await fs.readdir(storageDir), [document.id]);
+    assert.deepEqual(await fs.readFile(path.join(storageDir, document.id)), Buffer.from(contents));
+
+    const download = await fetch(`${baseUrl}/documents/${document.id}/download`, {
+      headers: { 'X-User-Id': 'usuario-a' },
+    });
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get('content-disposition'), /attachment;.*binario\.dat/);
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), Buffer.from(contents));
+  }, { maxFileSizeBytes: contents.byteLength + 1 });
+});
+
+test('upload acima do limite não deixa arquivos nem metadados', async () => {
+  await withServer(async (baseUrl, storageDir) => {
+    const response = await fetch(`${baseUrl}/upload`, {
+      method: 'POST',
+      headers: { 'X-User-Id': 'usuario-a' },
+      body: uploadForm('grande.txt', '12345'),
+    });
+    assert.equal(response.status, 413);
+    assert.deepEqual(await response.json(), {
+      error: { code: 'FILE_TOO_LARGE', message: 'O arquivo excede o limite permitido.' },
+    });
+    assert.deepEqual(await fs.readdir(storageDir), []);
+    const list = await fetch(`${baseUrl}/documents`, {
+      headers: { 'X-User-Id': 'usuario-a' },
+    });
+    assert.equal(list.status, 200);
+    assert.deepEqual(await list.json(), { documents: [] });
+  }, { maxFileSizeBytes: 4 });
+});
+
+test('listagem inicialmente vazia retorna todos os documentos do usuário ordenados', async () => {
+  await withServer(async (baseUrl) => {
+    const headers = { 'X-User-Id': 'usuario-a' };
+    const empty = await fetch(`${baseUrl}/documents`, { headers });
+    assert.equal(empty.status, 200);
+    assert.deepEqual(await empty.json(), { documents: [] });
+
+    const uploaded = [];
+    for (const name of ['primeiro.txt', 'segundo.txt', 'terceiro.txt']) {
+      const response = await fetch(`${baseUrl}/upload`, {
+        method: 'POST',
+        headers,
+        body: uploadForm(name, name),
+      });
+      assert.equal(response.status, 201);
+      uploaded.push(await response.json());
+    }
+
+    const response = await fetch(`${baseUrl}/documents`, { headers });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      documents: [...uploaded].sort((left, right) => right.uploadedAt.localeCompare(left.uploadedAt)),
+    });
+  });
+});
+
+test('download de ID inexistente ou arquivo removido retorna o mesmo 404', async () => {
+  await withServer(async (baseUrl, storageDir) => {
+    const headers = { 'X-User-Id': 'usuario-a' };
+    const upload = await fetch(`${baseUrl}/upload`, {
+      method: 'POST',
+      headers,
+      body: uploadForm('removido.txt', 'conteudo'),
+    });
+    assert.equal(upload.status, 201);
+    const document = await upload.json();
+    await fs.unlink(path.join(storageDir, document.id));
+
+    for (const id of ['00000000-0000-0000-0000-000000000000', document.id]) {
+      const response = await fetch(`${baseUrl}/documents/${id}/download`, { headers });
+      assert.equal(response.status, 404);
+      assert.deepEqual(await response.json(), {
+        error: { code: 'DOCUMENT_NOT_FOUND', message: 'Documento não encontrado.' },
+      });
+    }
+  });
+});
+
+test('todas as rotas documentais rejeitam requisições sem identidade', async () => {
+  await withServer(async (baseUrl, storageDir) => {
+    for (const [endpoint, options] of [
+      ['/upload', { method: 'POST', body: uploadForm('arquivo.txt', 'conteudo') }],
+      ['/documents', {}],
+      ['/documents/id/download', {}],
+    ]) {
+      const response = await fetch(`${baseUrl}${endpoint}`, options);
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: { code: 'MISSING_USER_ID', message: 'Informe o header X-User-Id.' },
+      });
+    }
+    assert.deepEqual(await fs.readdir(storageDir), []);
+  });
 });
