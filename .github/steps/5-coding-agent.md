@@ -14,7 +14,9 @@ melhorias seguindo SOLID, sem quebrar funcionalidades.
    para uma análise profunda do codebase.
 2. Peça uma lista priorizada de melhorias.
 3. Use o handoff **Aplicar refatoração** para transicionar do review para a
-   implementação das melhorias.
+   implementação das melhorias no agente `implementer`. Ao terminar e executar
+   os testes, use **Revisar implementação** para retornar as alterações ao
+   `code-reviewer`.
 
 ## Prompt sugerido
 

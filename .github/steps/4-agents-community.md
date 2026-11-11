@@ -11,7 +11,7 @@ complementares, e vale entender quando usar cada um.
 | Recurso             | Onde fica                          | O que é                                                        | Quando usar                                                  |
 | ------------------- | ---------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
 | Custom instructions | `.github/copilot-instructions.md`  | Regras aplicadas automaticamente a todo prompt                 | Convenções do projeto (stack, arquitetura, upload local)     |
-| Custom agent        | `.github/agents/*.agent.md`        | Persona persistente com ferramentas restritas, modelo e handoffs | Papéis: planner (só leitura), reviewer, TDD                  |
+| Custom agent        | `.github/agents/*.agent.md`        | Persona persistente com ferramentas restritas, modelo e handoffs | Papéis: planner (só leitura), implementer, reviewer e TDD    |
 | Prompt file         | `.github/prompts/*.prompt.md`      | Tarefa única invocada manualmente via `/comando`               | Scaffolding, gerar testes, preparar PR                       |
 
 ### Atualização de nomenclatura (importante)
@@ -24,13 +24,16 @@ O formato `*.chatmode.md` é legado. Neste workshop usamos `*.agent.md`.
 
 Um diferencial dos custom agents são os **handoffs**: botões que transicionam de
 um agente para outro com um prompt pré-preenchido. Isso permite fluxos guiados
-como **Planner -> Implementação -> Reviewer**, exatamente o fluxo deste
-treinamento. Os handoffs são declarados no frontmatter do arquivo do agente.
+como **Planner -> Implementer -> Code Reviewer**, exatamente o fluxo deste
+treinamento. O Planner encaminha o plano ao `implementer`; após implementar e
+executar os testes relevantes, o `implementer` encaminha as alterações ao
+`code-reviewer`. Os handoffs são declarados no frontmatter do arquivo do agente.
 
 ## O que você vai fazer
 
 1. Explore os custom agents já incluídos em `.github/agents`:
    - `planner.agent.md`
+   - `implementer.agent.md`
    - `code-reviewer.agent.md`
    - `tdd.agent.md`
 2. Abra o seletor de agentes no chat com `/agents` e o de prompts com `/prompts`.
