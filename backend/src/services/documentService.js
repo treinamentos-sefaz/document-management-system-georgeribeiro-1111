@@ -1,49 +1,71 @@
 const AppError = require('../errors/AppError');
 
+function toDocument(file, owner) {
+  return {
+    id: file.filename,
+    fileName: file.filename,
+    originalName: file.originalname,
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+    owner,
+    mimeType: file.mimetype,
+  };
+}
+
+async function withRepositoryError(operation, code, message) {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new AppError(500, code, message, { cause: error });
+  }
+}
+
 function createDocumentService(repository) {
+  async function saveDocument(document) {
+    try {
+      return await repository.save(document);
+    } catch (error) {
+      try {
+        await repository.removeStoredFile(document.fileName);
+      } catch (cleanupError) {
+        console.error('Falha ao remover arquivo após erro ao registrar metadados.', cleanupError);
+      }
+
+      throw error;
+    }
+  }
+
   return {
     async createDocument(file, owner) {
-      const document = {
-        id: file.filename,
-        fileName: file.filename,
-        originalName: file.originalname,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-        owner,
-        mimeType: file.mimetype,
-      };
-
-      try {
-        return await repository.save(document);
-      } catch (error) {
-        try {
-          await repository.removeStoredFile(document.fileName);
-        } catch (cleanupError) {
-          console.error('Falha ao remover arquivo após erro ao registrar metadados.', cleanupError);
-        }
-
-        throw new AppError(500, 'UPLOAD_FAILED', 'Não foi possível enviar o documento.', { cause: error });
-      }
+      const document = toDocument(file, owner);
+      return withRepositoryError(
+        () => saveDocument(document),
+        'UPLOAD_FAILED',
+        'Não foi possível enviar o documento.',
+      );
     },
 
     async listDocuments(owner) {
-      try {
-        return await repository.listByOwner(owner);
-      } catch (error) {
-        throw new AppError(500, 'LIST_FAILED', 'Não foi possível listar os documentos.', { cause: error });
-      }
+      return withRepositoryError(
+        () => repository.listByOwner(owner),
+        'LIST_FAILED',
+        'Não foi possível listar os documentos.',
+      );
     },
 
     async getDocumentForDownload(id, owner) {
-      let document;
-      try {
-        document = await repository.findByIdAndOwner(id, owner);
-        if (document && !(await repository.fileExists(document.fileName))) {
-          document = null;
-        }
-      } catch (error) {
-        throw new AppError(500, 'DOWNLOAD_FAILED', 'Não foi possível baixar o documento.', { cause: error });
-      }
+      const document = await withRepositoryError(
+        async () => {
+          const storedDocument = await repository.findByIdAndOwner(id, owner);
+          if (!storedDocument || !(await repository.fileExists(storedDocument.fileName))) {
+            return null;
+          }
+
+          return storedDocument;
+        },
+        'DOWNLOAD_FAILED',
+        'Não foi possível baixar o documento.',
+      );
 
       if (!document) {
         throw new AppError(404, 'DOCUMENT_NOT_FOUND', 'Documento não encontrado.');

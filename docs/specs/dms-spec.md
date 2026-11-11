@@ -181,6 +181,8 @@ O fluxo de dependência deve permanecer `routes -> controllers -> services -> re
 
 Multer deve usar `diskStorage` apontando para `STORAGE_DIR` (padrão `backend/storage`) e ser configurado com o limite de tamanho. O nome físico deve ser gerado pelo servidor. Nenhum armazenamento externo é permitido. Camadas internas não devem depender de Express; os repositórios encapsulam filesystem e estrutura em memória.
 
+O serviço de documentos separa a montagem de metadados da gravação com compensação e centraliza a tradução de falhas do repositório para `AppError`, preservando a causa original. Documento ausente ou arquivo removido continua sendo um erro de negócio `404`, não uma falha interna. Testes unitários do serviço usam repositórios falsos e não acessam o filesystem.
+
 ### 8.2 Frontend e integração
 
 O frontend usa componentes React, páginas e um serviço de API baseado em `fetch`. O serviço chama o backend com prefixo `/api`; o proxy Vite já está configurado para encaminhar a `http://localhost:3000` e remover `/api`. O cliente deve enviar `X-User-Id` nas rotas documentais com a identidade local configurada para o MVP. A identidade usada no frontend não autentica nem protege dados contra chamadas diretas.
