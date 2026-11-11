@@ -11,8 +11,9 @@ System em `docs/specs`.
 
 ## O que você vai fazer
 
-1. Abra o chat do Copilot e selecione o modo **Plan** (ou o agente customizado
-   `planner` disponível em `.github/agents/planner.agent.md`).
+1. Abra o chat do Copilot e selecione o agente customizado `planner`, disponível
+   em `.github/agents/planner.agent.md`, para usar o handoff configurado para
+   iniciar a implementação.
 2. Use como base o modelo em [docs/specs/spec-template.md](docs/specs/spec-template.md).
 3. Peça ao agente para gerar a especificação completa do DMS.
 
@@ -30,7 +31,9 @@ simples e a restrição de armazenamento local com multer. O plan criado não de
 O Plan Mode coleta contexto do codebase e da especificação e devolve um plano
 estruturado. Como ele não edita arquivos, é seguro para explorar abordagens
 antes de implementar. Ao final, use o handoff **Iniciar implementação** para
-transicionar do planejamento para a execução.
+transicionar para o agente `implementer`. Depois de implementar e executar os
+testes relevantes, use **Revisar implementação** para encaminhar as alterações
+ao `code-reviewer`.
 
 ## Conclusão do passo
 
