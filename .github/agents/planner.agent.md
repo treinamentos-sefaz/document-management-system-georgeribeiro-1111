@@ -4,8 +4,8 @@ name: planner
 tools: ['search', 'codebase', 'usages']
 handoffs:
   - label: Iniciar implementação
-    agent: agent
-    prompt: Implemente o plano descrito acima, seguindo as camadas do backend e as convenções do projeto.
+    agent: implementer
+    prompt: Implemente o plano descrito acima seguindo as camadas e convenções do projeto. Preserve os contratos existentes, execute os testes relevantes e depois use o handoff para revisar a implementação.
     send: false
 ---
 

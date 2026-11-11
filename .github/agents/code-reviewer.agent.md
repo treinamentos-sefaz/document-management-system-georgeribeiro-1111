@@ -4,8 +4,8 @@ name: code-reviewer
 tools: ['search', 'codebase', 'usages', 'problems']
 handoffs:
   - label: Aplicar refatoração
-    agent: agent
-    prompt: Aplique as melhorias priorizadas na revisão acima, sem quebrar funcionalidades existentes.
+    agent: implementer
+    prompt: Aplique as melhorias priorizadas na revisão acima, sem quebrar funcionalidades existentes. Execute os testes relevantes e depois use o handoff para revisar a implementação.
     send: false
 ---
 
